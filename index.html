@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emergency Response & Disaster Management Platform - Round 2</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="pulse"></span><div><strong>ERDM Command</strong><small>Code Clash 2026 · Round 2</small></div></div>
+    <nav class="nav">
+      <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="report">Report emergency</button>
+      <button data-view="incidents">All incidents <span class="count" id="navCount">0</span></button>
+      <button data-view="teams">Response teams <span class="count blue" id="navTeams">0</span></button>
+      <button data-view="map">Map</button>
+      <button data-view="analytics">Analytics</button>
+    </nav>
+    <div class="side-actions">
+      <label class="switch"><input type="checkbox" id="autoDispatch"> Auto-dispatch critical incidents</label>
+      <button class="btn ghost" id="exportBtn">Download CSV</button>
+      <button class="btn ghost" id="resetBtn">Reset demo data</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="menuBtn" aria-label="Toggle menu">&#9776;</button>
+      <h1 id="pageTitle">Command dashboard</h1>
+      <button class="btn red" id="quickReport">+ Report emergency</button>
+    </header>
+
+    <div class="banner hidden" id="alertBanner" role="alert">
+      <span class="pulse"></span>
+      <div class="banner-text" id="bannerText"></div>
+      <button class="btn light sm" id="bannerView">View critical</button>
+      <button class="icon-btn dark" id="bannerClose" aria-label="Dismiss alert">&times;</button>
+    </div>
+
+    <main class="content">
+
+      <!-- ===== Dashboard ===== -->
+      <section class="view" id="view-dashboard">
+        <div class="stats">
+          <div class="card stat blue"><span>Total incidents</span><b id="statTotal">0</b></div>
+          <div class="card stat red"><span>Critical (open)</span><b id="statCritical">0</b></div>
+          <div class="card stat green"><span>Available teams</span><b id="statAvail">0</b></div>
+          <div class="card stat orange"><span>Busy teams</span><b id="statBusy">0</b></div>
+          <div class="card stat yellow"><span>Assigned incidents</span><b id="statAssigned">0</b></div>
+          <div class="card stat green"><span>Resolved</span><b id="statResolved">0</b></div>
+        </div>
+        <div class="grid2">
+          <div class="card full-card">
+            <div class="card-head"><div><h2>Priority queue</h2><p class="muted">Ranked by severity, people affected, category and time waiting. Updates every minute.</p></div>
+              <button class="btn red sm" id="autoAllBtn">Auto-assign all</button></div>
+            <div id="queue" class="list compact"></div>
+          </div>
+          <div class="card"><h2>Incidents by category</h2><div id="catStats"></div></div>
+          <div class="card"><h2>Team availability</h2><div id="teamStats"></div></div>
+          <div class="card"><h2>Emergency hotspots</h2><p class="muted">Locations ranked by number and severity of reports.</p><div id="hotspots"></div></div>
+          <div class="card"><h2>Quick statistics</h2><div id="quickStats" class="quick"></div></div>
+        </div>
+      </section>
+
+      <!-- ===== Report form ===== -->
+      <section class="view hidden" id="view-report">
+        <div class="grid2 wide-left">
+          <form class="card" id="reportForm" novalidate>
+            <h2>Report an emergency</h2>
+            <p class="muted">If someone is in immediate danger, call your local emergency number first.</p>
+            <div class="field full"><label for="title">Incident title *</label><input id="title" maxlength="80" placeholder="e.g. Warehouse fire on Industrial Road"><small class="err" id="err-title"></small></div>
+            <div class="field full"><label for="description">Description *</label><textarea id="description" rows="3" placeholder="What is happening? Mention people trapped, injuries, gas, spreading fire..."></textarea><small class="err" id="err-description"></small></div>
+            <div class="field"><label for="category">Emergency category *</label><select id="category"><option value="">Select category</option></select><small class="err" id="err-category"></small></div>
+            <div class="field"><label for="people">People affected *</label><input id="people" type="number" min="0" max="100000" value="1"><small class="err" id="err-people"></small></div>
+            <div class="field"><label for="zone">Quick location</label><select id="zone"><option value="">Choose a known area (optional)</option></select></div>
+            <div class="field"><label for="location">Location name *</label><input id="location" placeholder="Street, landmark or area"><small class="err" id="err-location"></small></div>
+            <div class="field"><label for="lat">Latitude *</label><input id="lat" inputmode="decimal" placeholder="e.g. 13.0450"><small class="err" id="err-lat"></small></div>
+            <div class="field"><label for="lng">Longitude *</label><input id="lng" inputmode="decimal" placeholder="e.g. 80.2400"><small class="err" id="err-lng"></small></div>
+            <div class="field full"><button type="button" class="btn ghost-dark sm" id="geoBtn">Use my current location</button>
+              <span class="muted"> or click the map below to drop a pin</span></div>
+            <div class="full" id="pickMap"></div>
+            <div class="field full"><label for="contact">Contact (optional)</label><input id="contact" placeholder="Phone number or email"><small class="err" id="err-contact"></small></div>
+            <div class="form-actions"><button type="submit" class="btn red">Submit report</button><button type="button" class="btn ghost-dark" id="clearForm">Clear form</button></div>
+          </form>
+          <div class="card" id="preview"><h2>Live assessment</h2><div id="previewBody" class="muted">Fill in the form to see severity, priority and the nearest suitable team.</div></div>
+        </div>
+      </section>
+
+      <!-- ===== Incidents ===== -->
+      <section class="view hidden" id="view-incidents">
+        <div class="card filters">
+          <input id="searchInput" type="search" placeholder="Search title, location, ID, team or description">
+          <select id="filterCat"><option value="">All categories</option></select>
+          <select id="filterSev"><option value="">All severities</option></select>
+          <select id="filterStatus"><option value="">All statuses</option></select>
+          <select id="sortSel"><option value="priority">Sort: Priority</option><option value="newest">Sort: Newest</option></select>
+          <button class="btn ghost-dark" id="clearFilters">Clear</button>
+        </div>
+        <p class="muted" id="resultCount"></p>
+        <div id="incidentList" class="list"></div>
+      </section>
+
+      <!-- ===== Teams ===== -->
+      <section class="view hidden" id="view-teams">
+        <form class="card" id="teamForm" novalidate>
+          <h2>Add response team</h2>
+          <div class="field"><label for="tName">Team name *</label><input id="tName" maxlength="40" placeholder="e.g. Fire Brigade Charlie"><small class="err" id="err-tName"></small></div>
+          <div class="field"><label for="tType">Response category *</label><select id="tType"></select></div>
+          <div class="field"><label for="tZone">Quick location</label><select id="tZone"><option value="">Choose a known area (optional)</option></select></div>
+          <div class="field"><label for="tLat">Latitude *</label><input id="tLat" inputmode="decimal" placeholder="e.g. 13.0500"><small class="err" id="err-tLat"></small></div>
+          <div class="field"><label for="tLng">Longitude *</label><input id="tLng" inputmode="decimal" placeholder="e.g. 80.2300"><small class="err" id="err-tLng"></small></div>
+          <div class="form-actions"><button type="submit" class="btn red">Add team</button></div>
+        </form>
+        <p class="muted" id="teamCount" style="margin-top:16px"></p>
+        <div id="teamList" class="team-grid"></div>
+      </section>
+
+      <!-- ===== Operations map ===== -->
+      <section class="view hidden" id="view-map">
+        <div class="card">
+          <h2>Operations map</h2>
+          <p class="muted">This is a simulated operations map with incident coordinates and estimated distances. It is not a live road map, and the app does not calculate live traffic routes. External Google Maps links open live directions outside this dashboard.</p>
+          <div id="liveMap"></div>
+          <div class="legend">
+            <span><i class="lg Critical"></i>Critical</span><span><i class="lg High"></i>High</span><span><i class="lg Medium"></i>Medium</span><span><i class="lg Low"></i>Low</span>
+            <span><i class="lg sq av"></i>Team available</span><span><i class="lg sq bz"></i>Team busy</span><span><i class="lg ln"></i>Assigned route</span>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px"><h2>Active assignments</h2><div id="routeList" class="list compact"></div></div>
+      </section>
+
+      <!-- ===== Analytics ===== -->
+      <section class="view hidden" id="view-analytics">
+        <div class="grid2">
+          <div class="card"><h2>Severity distribution</h2><div id="sevChart"></div></div>
+          <div class="card"><h2>Status distribution</h2><div id="statusChart"></div></div>
+          <div class="card"><h2>Team utilisation by type</h2><div id="typeChart"></div></div>
+          <div class="card"><h2>Key indicators</h2><div id="kpis" class="quick"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="modal hidden" id="modal" role="dialog" aria-modal="true"><div class="modal-box" id="modalBox"></div></div>
+<div id="toasts" aria-live="polite"></div>
+<script src="script.js"></script>
+</body>
+</html>
